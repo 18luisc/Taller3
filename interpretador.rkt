@@ -76,8 +76,10 @@
   (number
   (digit (arbno digit) "." digit (arbno digit)) number)
   (number
-   ("-" digit (arbno digit)) number)))
-;;Falta text
+   ("-" digit (arbno digit)) number)
+  (text
+  (#\" (arbno (not (or #\" #\newline))) #\") string)))
+
 
 ;; ---------------------------------------------------
 ; 1. Definición de valores y expresiones del lenguaje
