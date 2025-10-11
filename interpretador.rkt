@@ -33,6 +33,18 @@
 ;;             := <primitiva-unaria> (<expresion>)
 ;;                primapp-un-exp (prim-unaria exp)
 ;;
+;;             := declarar (<identificador> = <expresion> (;)) { <expresion> }
+;;                variableLocal-exp (ids exps cuerpo)
+;;
+;;             := procedimiento (<identificador>*',') haga <expresion> finProc
+;;                procedimiento-exp (ids cuerpo)
+;;
+;;             := "evaluar" <expresion> (expresion ",")*  finEval
+;;                app-exp(exp exps) 
+;;
+;;             := letrec <identificador> (<identificador>) = <expresion> in <expresion>
+;;                letrec-exp (p-names b-vars p-bodies letrec-body)
+;; 
 ;; <primitiva-binaria> :=  + (primitiva-suma)
 ;; 
 ;;                     :=  ~ (primitiva-resta)
