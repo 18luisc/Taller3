@@ -62,7 +62,22 @@
 ;;                     :=  sub1 (primitiva-sub1)
 ;;******************************************************
 
+;; 0. Especificación Léxica
 
+(define scanner-spec-interpretador
+'((white-sp
+   (whitespace) skip)
+  (comment
+   ("%" (arbno (not #\newline))) skip)
+  (identifier
+   ("@" letter (arbno (or letter digit "?"))) symbol)
+  (number
+   (digit (arbno digit)) number)
+  (number
+  (digit (arbno digit) "." digit (arbno digit)) number)
+  (number
+   ("-" digit (arbno digit)) number)))
+;;Falta text
 
 ;; ---------------------------------------------------
 ; 1. Definición de valores y expresiones del lenguaje
