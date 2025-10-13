@@ -187,3 +187,88 @@
         (if pos
             (list-ref vals (- (length ids) (length pos)))
             (buscar-variable id amb-padre)))))) 
+
+;; ---------------------------------------------------
+;; 4. Booleanos: valor-verdad?
+;; ---------------------------------------------------
+
+(define (valor-verdad? v)
+  (cond
+    [(number? v) (not (= v 0))]
+    [else #t]))
+
+;; ---------------------------------------------------
+;; 5. Función eval-expresion
+;; ---------------------------------------------------
+;; Evalúa cualquier expresión del lenguaje según el ambiente actual.
+(define (eval-expresion exp amb)
+  (cases expresion exp
+
+    ;; Números literales
+    (numero-lit (num)
+      num)
+
+    ;; Textos literales
+    (texto-lit (txt)
+      txt)
+
+    ;; Variables: busca en el ambiente
+    (var-exp (id)
+      (let ([val (buscar-variable id amb)])
+        (if (equal? val 'not-found)
+            (eopl:error "Error: la variable no existe ~s" id)
+            val)))
+
+    ;; Primitivas binarias (+, ~, *, /, concat)
+    (primapp-bin-exp (exp1 prim exp2)
+      (let* ([v1 (eval-expresion exp1 amb)]
+             [v2 (eval-expresion exp2 amb)])
+        (eval-prim-bin prim v1 v2)))
+
+    ;; Primitivas unarias (add1, sub1, longitud)
+    (primapp-un-exp (prim exp1)
+      (let ([v (eval-expresion exp1 amb)])
+        (eval-prim-un prim v)))
+
+    ;; Condicional: Si ... entonces ... sino ... finSI
+    (condicional-exp (test-exp true-exp false-exp)
+      (if (valor-verdad? (eval-expresion test-exp amb))
+          (eval-expresion true-exp amb)
+          (eval-expresion false-exp amb)))
+
+    ;; Otros casos aún no implementados
+    (else (eopl:error "Expresión no soportada todavía"))))
+
+;; ---------------------------------------------------
+;; 6. Evaluación de primitivas binarias
+;; ---------------------------------------------------
+(define (eval-prim-bin prim v1 v2)
+  (cases primitiva-binaria prim
+    (primitiva-suma () (+ v1 v2))
+    (primitiva-resta () (- v1 v2))
+    (primitiva-multi () (* v1 v2))
+    (primitiva-div ()
+      (if (zero? v2)
+          (eopl:error "Error: división por cero")
+          (/ v1 v2)))
+    (primitiva-concat ()
+      (if (and (string? v1) (string? v2))
+          (string-append v1 v2)
+          (eopl:error "concat solo funciona con textos"))))
+  )
+
+;; ---------------------------------------------------
+;; 7. Evaluación de primitivas unarias
+;; ---------------------------------------------------
+(define (eval-prim-un prim v)
+  (cases primitiva-unaria prim
+    (primitiva-longitud ()
+      (if (string? v)
+          (string-length v)
+          (eopl:error "longitud solo funciona con textos")))
+    (primitiva-add1 ()
+      (if (number? v) (+ v 1)
+          (eopl:error "add1 solo funciona con números")))
+    (primitiva-sub1 ()
+      (if (number? v) (- v 1)
+          (eopl:error "sub1 solo funciona con números")))))
