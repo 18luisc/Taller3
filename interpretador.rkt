@@ -80,6 +80,33 @@
   (text
   (#\" (arbno (not (or #\" #\newline))) #\") string)))
 
+;; Especificación Sintáctica
+(define grammar-interpretador
+  '((programa (expresion) un-programa)
+    (expresion (number) numero-lit)
+    (expresion (text) texto-lit)
+    (expresion (identifier) var-exp)
+    (expresion ("(" expresion primitiva-binaria expresion ")") primapp-bin-exp)
+    (expresion (primitiva-unaria "(" expresion ")") primapp-un-exp)
+    (expresion ("Si" expresion "entonces" expresion "sino" expresion "finSI") condicional-exp)
+    (expresion ("declarar" "(" (separated-list identifier "=" expresion ";") ")" "{" expresion "}")
+                variableLocal-exp)
+    (expresion ("procedimiento" "(" (separated-list identifier ",") ")" "haga" expresion "finProc")
+                procedimiento-exp)
+    (expresion ("evaluar" expresion "(" (separated-list expresion ",") ")" "finEval")
+                app-exp)
+    (expresion ("letrec" (arbno identifier "(" (separated-list identifier ",") ")" "=" expresion) "in" expresion) 
+                letrec-exp)
+
+    (primitiva-binaria ("+") primitiva-suma)
+    (primitiva-binaria ("~") primitiva-resta)
+    (primitiva-binaria ("/") primitiva-div)
+    (primitiva-binaria ("*") primitiva-multi)
+    (primitiva-binaria ("concat") primitiva-concat)
+
+    (primitiva-unaria ("longitud") primitiva-longitud)
+    (primitiva-unaria ("add1") primitiva-add1)
+    (primitiva-unaria ("sub1") primitiva-sub1)))
 
 ;; ---------------------------------------------------
 ; 1. Definición de valores y expresiones del lenguaje
