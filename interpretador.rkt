@@ -176,11 +176,7 @@
 (define ambiente-inicial
   (lambda ()
     (extendido '(@a @b @c @d @e)
-             '(list 1 
-                   2 
-                   3 
-                   "hola" 
-                   "FLP")
+               '(1 2 3 "hola" "FLP")
              (vacio))))
 
 ;; ---------------------------------------------------
