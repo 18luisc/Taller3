@@ -152,6 +152,70 @@
       (un-programa (body)
                  (eval-expresion body (ambiente-inicial))))))
 
+;; eval-expresion <expresion> <ambiente> -> numero
+;; Uso: (eval-expresion exp env) -> numero
+(define eval-expresion
+  (lambda (exp env)
+    (cases expresion exp
+      (numero-lit (num) num)
+      (texto-lit (txt) txt)
+      (var-exp (id) (buscar-variable env id))
+      (primapp-bin-exp (rand1 prim rand2)
+        (let ((args (eval-rands (list rand1 rand2) env)))
+          (apply-primitiva-bin prim args)))
+      (primapp-un-exp (prim rand)
+        (let ((args (eval-rands (list rand) env)))
+          (apply-primitiva-un prim args)))
+      (condicional-exp (test-exp true-exp false-exp)
+        (if (valor-verdad? (eval-expresion test-exp env))
+            (eval-expresion true-exp env)
+            (eval-expresion false-exp env)))
+      (variableLocal-exp (ids exps cuerpo)
+        (let ((args (eval-rands exps env)))
+          (eval-expresion cuerpo
+                          (extend-amb ids args env))))
+      (procedimiento-exp (ids cuerpo)
+        (cerradura ids cuerpo env))
+      (app-exp (rator rands)
+        (let ((proc (eval-expresion rator env))
+              (args (eval-rands rands env)))
+          (if (procVal? proc)
+              (apply-procedimiento proc args)
+              (eopl:error 'eval-expression
+                          "Se intentó aplicar un no-procedimiento ~s" proc))))
+      (letrec-exp (p-names b-vars p-bodies letrec-body)
+        (eval-expresion letrec-body
+                        (extend-amb-rec p-names b-vars p-bodies env)))
+      )))
+
+
+;; Funciones auxiliares para eval-expresion
+(define eval-rands
+(lambda (rands env)
+(map (lambda (x) (eval-rand x env)) rands)))
+
+(define eval-rand
+(lambda (rand env)
+(eval-expresion rand env)))
+
+;; apply-primitiva-bin: <primitiva> <list-of-expresion> -> SchemeVal
+(define apply-primitiva-bin
+  (lambda (prim args)
+    (cases primitiva-binaria prim
+      (primitiva-suma () (+ (car args) (cadr args)))
+      (primitiva-resta () (- (car args) (cadr args)))
+      (primitiva-div () (/ (car args) (cadr args)))
+      (primitiva-multi () (* (car args) (cadr args)))
+      (primitiva-concat () (string-append (car args) (cadr args)))))) ; implementar apply-concat
+
+;; apply-primitiva-un: <primitiva> <list-of-expresion> -> SchemeVal
+(define apply-primitiva-un
+  (lambda (prim args)
+    (cases primitiva-unaria prim
+      (primitiva-longitud () (string-length (car args))) ; implementar como hallar la longitud apply-length
+      (primitiva-add1 () (* (car args) 1))
+      (primitiva-sub1 () (- (car args) 1)))))
+
 ;; ---------------------------------------------------
 ;; 1. Definición del ambiente
 ;; ---------------------------------------------------
@@ -176,7 +240,7 @@
              (vacio)))
 
 ;; ---------------------------------------------------
-; 3. Función buscar-variable
+; Función buscar-variable
 ;; ---------------------------------------------------
 
 (define (buscar-variable id amb)
@@ -186,4 +250,16 @@
       (let ([pos (member id ids)])
         (if pos
             (list-ref vals (- (length ids) (length pos)))
-            (buscar-variable id amb-padre)))))) 
+            (buscar-variable id amb-padre))))))
+
+;; ---------------------------------------------------
+; 3. Función valor-verdad?
+;; Definición de expresiones numericas que representan booleanos.
+;; ---------------------------------------------------
+(define (valor-verdad? val)
+  (cond
+    [(and (numero-lit? val)
+          (= (numero-lit-num val) 0)) #f]
+    [(numero-lit? val) #t]
+    [(texto-lit? val) #t]
+    [else val])) 
