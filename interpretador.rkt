@@ -153,16 +153,33 @@
                  (eval-expresion body (ambiente-inicial))))))
 
 ;; ---------------------------------------------------
+;; 1. Definición del ambiente
+; Any? Auxiliar para recibir cualquier parametro
+;; ---------------------------------------------------
+
+(define-datatype ambiente ambiente?
+  (vacio)
+  (extendido (ids (list-of symbol?))
+             (vals (list-of any?))
+             (ambiente-padre ambiente?))
+  (extendido-recursivo (proc-names (list-of symbol?))
+                       (b-vars (list-of (list-of symbol?)))
+                       (proc-bodies (list-of expresion?))
+                       (ambiente-padre ambiente?)))
+
+(define (any? x) #t)
+
+;; ---------------------------------------------------
 ; 2. Ambiente inicial
 ;; ---------------------------------------------------
 
 (define ambiente-inicial
   (extendido '(@a @b @c @d @e)
-             (list (numero-lit 1) 
-                   (numero-lit 2) 
-                   (numero-lit 3) 
-                   (texto-lit "hola") 
-                   (texto-lit "FLP"))
+             (list 1 
+                   2 
+                   3 
+                   "hola" 
+                   "FLP")
              (vacio)))
 
 ;; ---------------------------------------------------
@@ -182,50 +199,6 @@
     (extendido-recursivo
      p-names b-vars p-bodies old-env)))
 
-;; Funciones auxiliares para eval-expresion
-(define eval-rands
-(lambda (rands env)
-(map (lambda (x) (eval-rand x env)) rands)))
-
-(define eval-rand
-(lambda (rand env)
-(eval-expresion rand env)))
-
-;; apply-primitiva-bin: <primitiva> <list-of-expresion> -> SchemeVal
-(define apply-primitiva-bin
-  (lambda (prim args)
-    (cases primitiva-binaria prim
-      (primitiva-suma () (+ (car args) (cadr args)))
-      (primitiva-resta () (- (car args) (cadr args)))
-      (primitiva-div () (/ (car args) (cadr args)))
-      (primitiva-multi () (* (car args) (cadr args)))
-      (primitiva-concat () (string-append (car args) (cadr args)))))) ; implementar apply-concat
-
-;; apply-primitiva-un: <primitiva> <list-of-expresion> -> SchemeVal
-(define apply-primitiva-un
-  (lambda (prim args)
-    (cases primitiva-unaria prim
-      (primitiva-longitud () (string-length (car args))) ; implementar como hallar la longitud apply-length
-      (primitiva-add1 () (+ (car args) 1))
-      (primitiva-sub1 () (- (car args) 1)))))
-
-;; ---------------------------------------------------
-;; 1. Definición del ambiente
-;; ---------------------------------------------------
-
-(define-datatype ambiente ambiente?
-  (vacio)
-  (extendido (ids (list-of symbol?))
-             (vals (list-of expresion?))
-             (ambiente-padre ambiente?))
-  (extendido-recursivo (proc-names (list-of symbol?))
-                       (b-vars (list-of (list-of symbol?)))
-                       (proc-bodies (list-of expresion?))
-                       (ambiente-padre ambiente?)))
-
-
-
-
 ;; ---------------------------------------------------
 ; 6. Defición de procVal (cerradura)
 ;; creacion de procedimientos
@@ -235,26 +208,6 @@
     (lista-ID (list-of symbol?))
     (exp expresion?)
     (amb ambiente?)))
-
-;; apply-proce: evalua el cuerpo de un procedimientos en el ambiente extendido correspondiente
-(define apply-procedimiento
-  (lambda (proc args)
-    (cases procVal proc
-      (cerradura (ids body env)
-                 (eval-expresion body (extend-amb ids args env))))))
-
-
-;; ---------------------------------------------------
-; 3. Función valor-verdad?
-;; Definición de expresiones numericas que representan booleanos.
-;; ---------------------------------------------------
-(define (valor-verdad? val)
-  (cond
-    [(and (numero-lit? val)
-          (= (numero-lit-num val) 0)) #f]
-    [(numero-lit? val) #t]
-    [(texto-lit? val) #t]
-    [else val]))
 
 ;; ---------------------------------------------------
 ; Función buscar-variable
@@ -267,23 +220,32 @@
     (extendido (ids vals amb-padre)
       (let ([pos (member id ids)])
         (if pos
-            (let ([val (list-ref vals (- (length ids) (length pos)))])
-              (if (or (numero-lit? val) (texto-lit? val))
-                  (eval-expresion val amb)
-                  val))
+            ;; retorna directamente el valor almacenado (ya nativo)
+            (list-ref vals (- (length ids) (length pos)))
             (buscar-variable id amb-padre))))
     (extendido-recursivo (proc-names b-vars proc-bodies amb-padre)
       (let ([pos (member id proc-names)])
         (if pos
+            ;; construye la cerradura a partir de la información del letrec
             (let* ([index (- (length proc-names) (length pos))]
                    [proc-body (list-ref proc-bodies index)]
                    [proc-vars (list-ref b-vars index)])
-              (cerradura proc-vars proc-body amb))
+              (cerradura proc-vars proc-body amb))  ; cerradura es un valor nativo (procVal)
             (buscar-variable id amb-padre))))))
 
 
+;; ---------------------------------------------------
+; 3. Función valor-verdad?
+;; Definición de expresiones numericas que representan booleanos.
+;; ---------------------------------------------------
+(define valor-verdad?
+  (lambda (x)
+  (not (zero? x))))
+
+;; -----------------------------------------------------
 ;; eval-expresion <expresion> <ambiente> -> numero
 ;; Uso: (eval-expresion exp env) -> numero
+;; -----------------------------------------------------
 (define eval-expresion
   (lambda (exp env)
     (cases expresion exp
@@ -317,3 +279,43 @@
         (eval-expresion letrec-body
                         (extend-env-recursively p-names b-vars p-bodies env)))
       )))
+
+;; apply-procedimiento: evalua el cuerpo de un procedimientos en el ambiente extendido correspondiente
+(define apply-procedimiento
+  (lambda (proc args)
+    (cases procVal proc
+      (cerradura (ids body env)
+                 (eval-expresion body (extend-amb ids args env))))))
+
+;; Funciones auxiliares para eval-expresion
+(define eval-rands
+(lambda (rands env)
+(map (lambda (x) (eval-rand x env)) rands)))
+
+(define eval-rand
+(lambda (rand env)
+(eval-expresion rand env)))
+
+;; apply-primitiva-bin: <primitiva> <list-of-expresion> -> SchemeVal
+(define apply-primitiva-bin
+  (lambda (prim args)
+    (cases primitiva-binaria prim
+      (primitiva-suma () (+ (car args) (cadr args)))
+      (primitiva-resta () (- (car args) (cadr args)))
+      (primitiva-div () (/ (car args) (cadr args)))
+      (primitiva-multi () (* (car args) (cadr args)))
+      (primitiva-concat () (string-append (car args) (cadr args)))))) ; implementar apply-concat
+
+;; apply-primitiva-un: <primitiva> <list-of-expresion> -> SchemeVal
+(define apply-primitiva-un
+  (lambda (prim args)
+    (cases primitiva-unaria prim
+      (primitiva-longitud () (string-length (car args))) ; implementar como hallar la longitud apply-length
+      (primitiva-add1 () (+ (car args) 1))
+      (primitiva-sub1 () (- (car args) 1)))))
+
+
+
+
+
+
