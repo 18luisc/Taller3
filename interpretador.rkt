@@ -174,13 +174,14 @@
 ;; ---------------------------------------------------
 
 (define ambiente-inicial
-  (extendido '(@a @b @c @d @e)
-             (list 1 
+  (lambda ()
+    (extendido '(@a @b @c @d @e)
+             '(list 1 
                    2 
                    3 
                    "hola" 
                    "FLP")
-             (vacio)))
+             (vacio))))
 
 ;; ---------------------------------------------------
 ; Ambiente extendido
@@ -315,7 +316,7 @@
       (primitiva-sub1 () (- (car args) 1)))))
 
 
-
-
+(show-the-datatypes)
+(display (interpreter))
 
 
