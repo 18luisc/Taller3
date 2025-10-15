@@ -152,42 +152,35 @@
       (un-programa (body)
                  (eval-expresion body (ambiente-inicial))))))
 
-;; eval-expresion <expresion> <ambiente> -> numero
-;; Uso: (eval-expresion exp env) -> numero
-(define eval-expresion
-  (lambda (exp env)
-    (cases expresion exp
-      (numero-lit (num) num)
-      (texto-lit (txt) txt)
-      (var-exp (id) (buscar-variable env id))
-      (primapp-bin-exp (rand1 prim rand2)
-        (let ((args (eval-rands (list rand1 rand2) env)))
-          (apply-primitiva-bin prim args)))
-      (primapp-un-exp (prim rand)
-        (let ((args (eval-rands (list rand) env)))
-          (apply-primitiva-un prim args)))
-      (condicional-exp (test-exp true-exp false-exp)
-        (if (valor-verdad? (eval-expresion test-exp env))
-            (eval-expresion true-exp env)
-            (eval-expresion false-exp env)))
-      (variableLocal-exp (ids exps cuerpo)
-        (let ((args (eval-rands exps env)))
-          (eval-expresion cuerpo
-                          (extend-amb ids args env))))
-      (procedimiento-exp (ids cuerpo)
-        (cerradura ids cuerpo env))
-      (app-exp (rator rands)
-        (let ((proc (eval-expresion rator env))
-              (args (eval-rands rands env)))
-          (if (procVal? proc)
-              (apply-procedimiento proc args)
-              (eopl:error 'eval-expression
-                          "Se intentó aplicar un no-procedimiento ~s" proc))))
-      (letrec-exp (p-names b-vars p-bodies letrec-body)
-        (eval-expresion letrec-body
-                        (extend-amb-rec p-names b-vars p-bodies env)))
-      )))
+;; ---------------------------------------------------
+; 2. Ambiente inicial
+;; ---------------------------------------------------
 
+(define ambiente-inicial
+  (extendido '(@a @b @c @d @e)
+             (list (numero-lit 1) 
+                   (numero-lit 2) 
+                   (numero-lit 3) 
+                   (texto-lit "hola") 
+                   (texto-lit "FLP"))
+             (vacio)))
+
+;; ---------------------------------------------------
+; Ambiente extendido
+;; extend-amb <list-of symbols> <list-of SchemeVal> ambiente -> ambiente
+;; usage: (extend-amb '(x ... x_n) '(v ... v_n) env)
+;; -> (extendido '(x ... x_n) '(v ... v_n) env)
+;; ---------------------------------------------------
+(define extend-amb
+  (lambda (syms vals env)
+    (extendido syms vals env)))
+
+;extend-env-recursively: <list-of symbols> <list-of <list-of symbols>> <list-of expressions> environment -> environment
+;función que crea un ambiente extendido para procedimientos recursivos
+(define extend-env-recursively
+  (lambda (p-names b-vars p-bodies old-env)
+    (extendido-recursivo
+     p-names b-vars p-bodies old-env)))
 
 ;; Funciones auxiliares para eval-expresion
 (define eval-rands
@@ -213,7 +206,7 @@
   (lambda (prim args)
     (cases primitiva-unaria prim
       (primitiva-longitud () (string-length (car args))) ; implementar como hallar la longitud apply-length
-      (primitiva-add1 () (* (car args) 1))
+      (primitiva-add1 () (+ (car args) 1))
       (primitiva-sub1 () (- (car args) 1)))))
 
 ;; ---------------------------------------------------
@@ -224,33 +217,32 @@
   (vacio)
   (extendido (ids (list-of symbol?))
              (vals (list-of expresion?))
-             (ambiente-padre ambiente?)))
+             (ambiente-padre ambiente?))
+  (extendido-recursivo (proc-names (list-of symbol?))
+                       (b-vars (list-of (list-of symbol?)))
+                       (proc-bodies (list-of expresion?))
+                       (ambiente-padre ambiente?)))
+
+
+
 
 ;; ---------------------------------------------------
-; 2. Ambiente inicial
+; 6. Defición de procVal (cerradura)
+;; creacion de procedimientos
 ;; ---------------------------------------------------
+(define-datatype procVal procVal?
+  (cerradura
+    (lista-ID (list-of symbol?))
+    (exp expresion?)
+    (amb ambiente?)))
 
-(define ambiente-inicial
-  (extendido '(@a @b @c @d @e)
-             (list (numero-lit 1) 
-                   (numero-lit 2) 
-                   (numero-lit 3) 
-                   (texto-lit "hola") 
-                   (texto-lit "FLP"))
-             (vacio)))
+;; apply-proce: evalua el cuerpo de un procedimientos en el ambiente extendido correspondiente
+(define apply-procedimiento
+  (lambda (proc args)
+    (cases procVal proc
+      (cerradura (ids body env)
+                 (eval-expresion body (extend-amb ids args env))))))
 
-;; ---------------------------------------------------
-; Función buscar-variable
-;; ---------------------------------------------------
-
-(define (buscar-variable id amb)
-  (cases ambiente amb
-    (vacio () 'not-found)
-    (extendido (ids vals amb-padre)
-      (let ([pos (member id ids)])
-        (if pos
-            (list-ref vals (- (length ids) (length pos)))
-            (buscar-variable id amb-padre))))))
 
 ;; ---------------------------------------------------
 ; 3. Función valor-verdad?
@@ -262,4 +254,66 @@
           (= (numero-lit-num val) 0)) #f]
     [(numero-lit? val) #t]
     [(texto-lit? val) #t]
-    [else val])) 
+    [else val]))
+
+;; ---------------------------------------------------
+; Función buscar-variable
+;; ---------------------------------------------------
+
+(define (buscar-variable id amb)
+  (cases ambiente amb
+    (vacio ()
+      (eopl:error 'buscar-variable "Variable no encontrada: ~s" id))
+    (extendido (ids vals amb-padre)
+      (let ([pos (member id ids)])
+        (if pos
+            (let ([val (list-ref vals (- (length ids) (length pos)))])
+              (if (or (numero-lit? val) (texto-lit? val))
+                  (eval-expresion val amb)
+                  val))
+            (buscar-variable id amb-padre))))
+    (extendido-recursivo (proc-names b-vars proc-bodies amb-padre)
+      (let ([pos (member id proc-names)])
+        (if pos
+            (let* ([index (- (length proc-names) (length pos))]
+                   [proc-body (list-ref proc-bodies index)]
+                   [proc-vars (list-ref b-vars index)])
+              (cerradura proc-vars proc-body amb))
+            (buscar-variable id amb-padre))))))
+
+
+;; eval-expresion <expresion> <ambiente> -> numero
+;; Uso: (eval-expresion exp env) -> numero
+(define eval-expresion
+  (lambda (exp env)
+    (cases expresion exp
+      (numero-lit (num) num)
+      (texto-lit (txt) txt)
+      (var-exp (id) (buscar-variable id env))
+      (primapp-bin-exp (rand1 prim rand2)
+        (let ((args (eval-rands (list rand1 rand2) env)))
+          (apply-primitiva-bin prim args)))
+      (primapp-un-exp (prim rand)
+        (let ((args (eval-rands (list rand) env)))
+          (apply-primitiva-un prim args)))
+      (condicional-exp (test-exp true-exp false-exp)
+        (if (valor-verdad? (eval-expresion test-exp env))
+            (eval-expresion true-exp env)
+            (eval-expresion false-exp env)))
+      (variableLocal-exp (ids exps cuerpo)
+        (let ((args (eval-rands exps env)))
+          (eval-expresion cuerpo
+                          (extend-amb ids args env))))
+      (procedimiento-exp (ids cuerpo)
+        (cerradura ids cuerpo env))
+      (app-exp (rator rands)
+        (let ((proc (eval-expresion rator env))
+              (args (eval-rands rands env)))
+          (if (procVal? proc)
+              (apply-procedimiento proc args)
+              (eopl:error 'eval-expression
+                          "Se intentó aplicar un no-procedimiento ~s" proc))))
+      (letrec-exp (p-names b-vars p-bodies letrec-body)
+        (eval-expresion letrec-body
+                        (extend-env-recursively p-names b-vars p-bodies env)))
+      )))
