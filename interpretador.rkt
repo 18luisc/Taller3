@@ -213,6 +213,7 @@
 (define (buscar-variable id amb)
   (cases ambiente amb
     (vacio ()
+      (interpreter)
       (eopl:error 'buscar-variable "Variable no encontrada: ~s" id))
     (extendido (ids vals amb-padre)
       (let ([pos (member id ids)])
@@ -313,6 +314,31 @@
 
 
 (show-the-datatypes)
-(display (interpreter))
 
+;; Procedimiento recursivo para sumar usando add1 y sub1
+(display
+ (eval-programa
+  (scan&parse
+   "letrec @sumar(@x, @y) = 
+       Si @y 
+       entonces evaluar @sumar(add1(@x), sub1(@y)) finEval 
+       sino @x 
+       finSI 
+    in evaluar @sumar(4, 5) finEval"
+  )))
+(newline)
+
+;; Decorador @saludar aplicado sobre @integrantes
+(display
+ (eval-programa
+  (scan&parse
+   "declarar(@parte1 = \"Luis\" concat \"-y-\"; \
+@parte2 = \"Jhoan\" concat (\"-y-\" concat \"Heidy\"); \
+@integrantes = procedimiento() haga @parte1 concat @parte2 finProc; \
+@saludar = procedimiento(@funcion) haga procedimiento() haga \"Hola:\" concat evaluar @funcion() finEval finProc finProc; \
+@decorate = evaluar @saludar(@integrantes) finEval) {evaluar @decorate() finEval}"
+  )))
+(newline)
+
+(display (interpreter))
 
