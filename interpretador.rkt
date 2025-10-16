@@ -78,7 +78,7 @@
   (number
    ("-" digit (arbno digit)) number)
   (text
-   ((or letter "_") (arbno (or letter digit "_" ":"))) string)
+ ("\"" (arbno (or letter digit "_" ":" "-" " ")) "\"") string)
   ))
 
 ;; Especificación Sintáctica
@@ -213,23 +213,21 @@
 (define (buscar-variable id amb)
   (cases ambiente amb
     (vacio ()
-      (interpreter)
       (eopl:error 'buscar-variable "Variable no encontrada: ~s" id))
     (extendido (ids vals amb-padre)
       (let ([pos (member id ids)])
         (if pos
-            ;; retorna directamente el valor almacenado (ya nativo)
             (list-ref vals (- (length ids) (length pos)))
             (buscar-variable id amb-padre))))
     (extendido-recursivo (proc-names b-vars proc-bodies amb-padre)
       (let ([pos (member id proc-names)])
         (if pos
-            ;; construye la cerradura a partir de la información del letrec
             (let* ([index (- (length proc-names) (length pos))]
                    [proc-body (list-ref proc-bodies index)]
                    [proc-vars (list-ref b-vars index)])
-              (cerradura proc-vars proc-body amb))  ; cerradura es un valor nativo (procVal)
+              (cerradura proc-vars proc-body amb))
             (buscar-variable id amb-padre))))))
+
 
 
 ;; ---------------------------------------------------
@@ -248,7 +246,8 @@
   (lambda (exp env)
     (cases expresion exp
       (numero-lit (num) num)
-      (texto-lit (txt) txt)
+      (texto-lit (txt)
+                 (substring txt 1 (- (string-length txt) 1)))
       (var-exp (id) (buscar-variable id env))
       (primapp-bin-exp (rand1 prim rand2)
         (let ((args (eval-rands (list rand1 rand2) env)))
@@ -328,17 +327,79 @@
   )))
 (newline)
 
-;; Decorador @saludar aplicado sobre @integrantes
+
+
+;; ---------------------------------------------------
+;; b) Factorial de un número usando letrec (recursión)
+;; ---------------------------------------------------
+
 (display
  (eval-programa
   (scan&parse
-   "declarar(@parte1 = \"Luis\" concat \"-y-\"; \
-@parte2 = \"Jhoan\" concat (\"-y-\" concat \"Heidy\"); \
-@integrantes = procedimiento() haga @parte1 concat @parte2 finProc; \
-@saludar = procedimiento(@funcion) haga procedimiento() haga \"Hola:\" concat evaluar @funcion() finEval finProc finProc; \
-@decorate = evaluar @saludar(@integrantes) finEval) {evaluar @decorate() finEval}"
+   "letrec @factorial(@n) =
+        Si @n
+        entonces (@n * evaluar @factorial(sub1(@n)) finEval)
+        sino 1
+        finSI
+    in evaluar @factorial(5) finEval"
   )))
 (newline)
 
-(display (interpreter))
+(display
+ (eval-programa
+  (scan&parse
+   "letrec @factorial(@n) =
+        Si @n
+        entonces (@n * evaluar @factorial(sub1(@n)) finEval)
+        sino 1
+        finSI
+    in evaluar @factorial(10) finEval"
+  )))
+(newline)
 
+;; ---------------------------------------------------
+;; e) @decorador
+;; --------------------------------------------------
+
+(display
+ (eval-programa
+  (scan&parse
+   "declarar (
+      @integrantes = procedimiento () haga (\"Luis\" concat (\"-y-\" concat \"Heidy\")) finProc;
+      @saludar = procedimiento (@funcion) haga procedimiento () haga (\"Hola:\" concat evaluar @funcion () finEval) finProc finProc
+    ) {
+      declarar (
+        @decorate = evaluar @saludar (@integrantes) finEval
+      ) {
+        evaluar @decorate () finEval
+      }
+    }"
+  )))
+(newline)
+
+
+;; ---------------------------------------------------
+;; f) @decorador con mensaje
+;; --------------------------------------------------
+
+(display
+ (eval-programa
+  (scan&parse
+   "declarar (
+      @integrantes = procedimiento () haga (\"Robinson\" concat (\"-y-\" concat \"Sara\")) finProc;
+      @saludar = procedimiento (@funcion)
+                    haga procedimiento (@mensaje)
+                          haga (\"Hola:\" concat (evaluar @funcion () finEval concat @mensaje))
+                    finProc
+                finProc
+    ) {
+      declarar (
+        @decorate = evaluar @saludar (@integrantes) finEval
+      ) {
+        evaluar @decorate (\"-ProfesoresFLP\") finEval
+      }
+    }"
+  )))
+(newline)
+
+(interpreter)
