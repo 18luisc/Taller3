@@ -313,6 +313,22 @@
 
 
 (show-the-datatypes)
+ 
+;; ---------------------------------------------------
+;; a) Procedimiento para calcular el area de un circulo dado un radio (A=PI*r*r).
+;; ---------------------------------------------------
+
+(display (eval-programa 
+  (scan&parse 
+"
+declarar (
+  @radio=2.5;
+  @areaCirculo = procedimiento (@radio) haga ((3.1416 * @radio) * @radio) finProc
+) { 
+  evaluar @areaCirculo (@radio) finEval 
+}
+"
+  )))
 
 ;; ---------------------------------------------------
 ;; b) Factorial de un número usando letrec (recursión)
@@ -343,7 +359,7 @@
 (newline)
 
 ;; ---------------------------------------------------
-;; d) Procedimiento recursivo para sumar usando add1 y sub1
+;; c) Procedimiento recursivo para sumar usando add1 y sub1
 ;; ---------------------------------------------------
 (display
  (eval-programa
@@ -356,6 +372,13 @@
     in evaluar @sumar(4, 5) finEval"
   )))
 (newline)
+
+;; ---------------------------------------------------
+;; d) Procedimiento que permite restar y multiplicar dos números
+;;    haciendo uso solamente de las primitivas add1 y sub1
+;; ---------------------------------------------------
+
+
 
 ;; ---------------------------------------------------
 ;; e) @decorador
