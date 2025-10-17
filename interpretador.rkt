@@ -379,7 +379,37 @@ declarar (
 ;;    haciendo uso solamente de las primitivas add1 y sub1
 ;; ---------------------------------------------------
 
+(display (eval-programa 
+  (scan&parse 
+"
+letrec @restar (@x, @y) = 
+    Si @y entonces evaluar @restar(sub1(@x), sub1(@y)) finEval
+    sino @x finSI
+in evaluar @restar(10, 3) finEval
+"
+  )))
+(newline)
 
+(display (eval-programa 
+  (scan&parse 
+"
+letrec @multiplicar(@m, @n) =
+  letrec @sumar(@x, @y) =
+    Si @y 
+      entonces evaluar @sumar(add1(@x), sub1(@y)) finEval
+      sino @x
+    finSI
+  in
+    letrec @multiplicarAux(@a, @b, @acum) =
+      Si @b 
+        entonces evaluar @multiplicarAux(@a, sub1(@b), evaluar @sumar(@acum, @a) finEval) finEval
+        sino @acum
+      finSI
+    in evaluar @multiplicarAux(@m, @n, 0) finEval
+in evaluar @multiplicar(10, 3) finEval
+"
+  )))
+(newline)
 
 ;; ---------------------------------------------------
 ;; e) @decorador
