@@ -329,6 +329,7 @@ declarar (
 }
 "
   )))
+(newline)
 
 ;; ---------------------------------------------------
 ;; b) Factorial de un número usando letrec (recursión)
