@@ -314,21 +314,6 @@
 
 (show-the-datatypes)
 
-;; Procedimiento recursivo para sumar usando add1 y sub1
-(display
- (eval-programa
-  (scan&parse
-   "letrec @sumar(@x, @y) = 
-       Si @y 
-       entonces evaluar @sumar(add1(@x), sub1(@y)) finEval 
-       sino @x 
-       finSI 
-    in evaluar @sumar(4, 5) finEval"
-  )))
-(newline)
-
-
-
 ;; ---------------------------------------------------
 ;; b) Factorial de un número usando letrec (recursión)
 ;; ---------------------------------------------------
@@ -354,6 +339,21 @@
         sino 1
         finSI
     in evaluar @factorial(10) finEval"
+  )))
+(newline)
+
+;; ---------------------------------------------------
+;; d) Procedimiento recursivo para sumar usando add1 y sub1
+;; ---------------------------------------------------
+(display
+ (eval-programa
+  (scan&parse
+   "letrec @sumar(@x, @y) = 
+       Si @y 
+       entonces evaluar @sumar(add1(@x), sub1(@y)) finEval 
+       sino @x 
+       finSI 
+    in evaluar @sumar(4, 5) finEval"
   )))
 (newline)
 
